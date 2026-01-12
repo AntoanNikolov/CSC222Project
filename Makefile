@@ -12,8 +12,9 @@ compile:
 	-I$(SFML_PATH)/include \
 	-o bin/main \
 	-L$(SFML_PATH)/lib \
+	-Wl,-rpath,$(SFML_PATH)/lib \
 	-lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio -lsfml-network
-
+#remove -Wl line if there are issues.
 run: mac-compile
 	./bin/main
 

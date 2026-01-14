@@ -46,7 +46,7 @@ brew info sfml
 
 ``` /opt/homebrew/Cellar/sfml/3.0.2 ``` 
 
-- If your path is different, update SFML_PATH in the Makefile.
+- Update SFML_PATH accordingly in the Makefile.
 
 #### Make sure to add the path to the "include" folder to your project/ide settings
 ### 2. Build and Run

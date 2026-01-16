@@ -1,22 +1,35 @@
-###### MacOS SFML Makefile ######
+CXX = g++
+CXXFLAGS = -std=c++17 -Wall -Wextra
 
-# Replace this with the path you get from `brew info sfml`
-SFML_PATH = /Users/1007269/.homebrew/Cellar/sfml/3.0.2
+SRC_DIR = src
+BIN_DIR = bin
+TARGET = $(BIN_DIR)/main
 
-# Replace "src" with the name of the folder where all your cpp code is
-cppFileNames := $(shell find ./src -type f -name "*.cpp")
+CPP_FILES := $(shell find $(SRC_DIR) -type f -name "*.cpp")
 
+UNAME_S := $(shell uname -s)
+
+# ---------- OS-SPECIFIC SETTINGS ----------
+ifeq ($(UNAME_S),Darwin)
+	# macOS (Homebrew)
+	SFML_PATH = /opt/homebrew/Cellar/sfml/3.0.2
+	INCLUDES = -I$(SFML_PATH)/include
+	LIBS = -L$(SFML_PATH)/lib \
+	       -Wl,-rpath,$(SFML_PATH)/lib \
+	       -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio -lsfml-network
+else
+	# Linux (apt / dnf / pacman)
+	INCLUDES =
+	LIBS = -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio -lsfml-network
+endif
+
+# ---------- RULES ----------
 compile:
-	mkdir -p bin
-	g++ -std=c++17 $(cppFileNames) \
-	-I$(SFML_PATH)/include \
-	-o bin/main \
-	-L$(SFML_PATH)/lib \
-	-Wl,-rpath,$(SFML_PATH)/lib \
-	-lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio -lsfml-network
-#remove -Wl line if there are issues.
+	mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $(CPP_FILES) $(INCLUDES) -o $(TARGET) $(LIBS)
+
 run: compile
-	./bin/main
+	./$(TARGET)
 
 clean:
-	rm -f bin/main
+	rm -f $(TARGET)

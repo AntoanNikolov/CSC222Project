@@ -29,7 +29,7 @@ The core gameplay will be a stationary center turret defending against waves of 
 
 ---
 
-## macOS / Linux Setup
+## macOS
 
 ### 1. Install SFML (Homebrew)
 ```bash
@@ -48,6 +48,29 @@ brew info sfml
 
 - Update SFML_PATH accordingly in the Makefile.
 
+### 2. Build and Run
+
+From the project root:  
+
+``` make run```  
+
+Or separately:  
+```bash
+make compile
+./bin/main
+```
+
+## Linux Setup
+### 1. Install SFML
+#### Ubuntu / Debian
+``` sudo apt update ```  
+``` sudo apt install libsfml-dev``` 
+#### Arch Linux
+``` sudo pacman -S sfml ```
+#### Fedora
+``` sudo dnf install SFML-devel ```
+
+    On Linux, SFML is installed in standard system locations (/usr/include, /usr/lib), so no manual path configuration is required. It will be found automatically.
 ### 2. Build and Run
 
 From the project root:  

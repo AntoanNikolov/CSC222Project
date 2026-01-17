@@ -4,6 +4,7 @@
 *.sw[pon]
 build
 .vscode
+bin/
 # ---> macOS
 # General
 .DS_Store

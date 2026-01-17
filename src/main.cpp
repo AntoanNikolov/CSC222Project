@@ -71,23 +71,24 @@ int main() {
     auto spawnWave = [&](int waveNumber) {
         int count = 4 + waveNumber * 2;
         enemies.clear();
-        enemies.reserve(count);
+        enemies.reserve(count); // we reserve enough to store more enemies and avoid reallocations
         float spawnRadius = std::max(WINDOW_W, WINDOW_H) / 2.f + 50.f;
         for (int i = 0; i < count; ++i) {
-            float a = angleDist(rng);
+            float a = angleDist(rng); // random angle
             sf::Vector2f pos = CENTER + sf::Vector2f(std::cos(a), std::sin(a)) * spawnRadius;
-            Enemy e;
-            e.shape = sf::CircleShape(14.f);
-            e.shape.setOrigin(sf::Vector2f(e.shape.getRadius(), e.shape.getRadius()));
-            e.shape.setPosition(pos);
+            Enemy e; //make an enemy
+            e.shape = sf::CircleShape(14.f); // give it a circle shape 
+            e.shape.setOrigin(sf::Vector2f(e.shape.getRadius(), e.shape.getRadius())); // by default origin is top-left, we are centering it
+            e.shape.setPosition(pos); // move he ORIGIN we made in the line above
             // velocity towards center
-            sf::Vector2f dir = CENTER - pos;
-            float len = std::sqrt(dir.x*dir.x + dir.y*dir.y);
-            if (len != 0) dir /= len;
+            sf::Vector2f dir = CENTER - pos; //vector pointing from the enemy position to the center. Center - enemy position
+            float len = std::sqrt(dir.x*dir.x + dir.y*dir.y); // find distance
+            if (len != 0) dir /= len; //prevent division by zero when enemy reaches center
+            // speed increases with wave number + some random variation
             float speed = 40.f + 8.f * waveNumber + (std::uniform_real_distribution<float>(-10.f, 10.f)(rng));
-            e.velocity = dir * speed;
+            e.velocity = dir * speed; //this makes the enemy actually move
             e.shape.setFillColor(sf::Color(200, 60, 60));
-            enemies.push_back(e);
+            enemies.push_back(e); // adds the enemy
         }
         waveActive = true;
     };
@@ -96,20 +97,20 @@ int main() {
     spawnWave(wave);
 
     sf::Clock clock;
-    while (window.isOpen()) {
-        float dt = clock.restart().asSeconds();
-        timeSinceLastShot += dt;
+    while (window.isOpen()) { //actual game loop, runs until window is closed
+        // dt is the time since the last frame
+        float dt = clock.restart().asSeconds(); // we use time so the movement speed is not dependent on framerate
+        timeSinceLastShot += dt; //control shooting cooldown
 
-        // Events: pollEvent returns std::optional<Event> in SFML 3
-        while (auto evOpt = window.pollEvent()) {
+        while (auto evOpt = window.pollEvent()) { //checks if something happens in the window (like closing it)
             const auto &ev = *evOpt;
             // use the is<T>() helper in SFML 3 to check event type
             if (ev.is<sf::Event::Closed>()) {
-                window.close();
+                window.close(); //if the window is closed, we close it. woah.
             }
         }
 
-        // Input: rotate turret with left/right arrows
+        // initially no rotation this frame
         float rotationThisFrame = 0.f;
         // SFML 3 key enum is nested under sf::Keyboard::Key
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left)) {
@@ -119,7 +120,7 @@ int main() {
             rotationThisFrame += rotationSpeedDegPerSec * dt;
         }
         turretAngleDeg += rotationThisFrame;
-        // keep angle normalized
+        // stick whithin 0-360 range
         if (turretAngleDeg > 360.f) turretAngleDeg -= 360.f;
         if (turretAngleDeg < 0.f) turretAngleDeg += 360.f;
 
@@ -129,14 +130,14 @@ int main() {
             // create bullet
             Bullet b;
             b.shape = sf::CircleShape(bulletRadius);
-            b.shape.setOrigin(sf::Vector2f(bulletRadius, bulletRadius));
-            b.shape.setPosition(CENTER);
+            b.shape.setOrigin(sf::Vector2f(bulletRadius, bulletRadius)); // this centers the circle shape
+            b.shape.setPosition(CENTER); //shooting from center of turret
             // compute direction from turretAngleDeg
-            float rad = turretAngleDeg * 3.14159265f / 180.f;
-            sf::Vector2f dir(std::cos(rad), std::sin(rad));
-            b.velocity = dir * bulletSpeed;
+            float rad = turretAngleDeg * 3.14159265f / 180.f; // degrees to radians
+            sf::Vector2f dir(std::cos(rad), std::sin(rad)); // direction vector
+            b.velocity = dir * bulletSpeed; // velocity (makes the bullet move)
             b.shape.setFillColor(sf::Color::Yellow);
-            bullets.push_back(b);
+            bullets.push_back(b); // add to bullets list
         }
 
         // Update bullets

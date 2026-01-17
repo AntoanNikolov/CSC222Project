@@ -141,31 +141,31 @@ int main() {
         }
 
         // Update bullets
-        for (size_t i = 0; i < bullets.size(); ) {
-            Bullet &b = bullets[i];
-            b.shape.move(b.velocity * dt);
-            sf::Vector2f p = b.shape.getPosition();
+        for (int i = 0; i < bullets.size(); ) {
+            Bullet &b = bullets[i]; //take current bullet
+            b.shape.move(b.velocity * dt); //move it according to its velocity
+            sf::Vector2f p = b.shape.getPosition(); // current position
             // remove bullet if outside window bounds (with margin)
-            if (p.x < -50 || p.x > WINDOW_W + 50 || p.y < -50 || p.y > WINDOW_H + 50) {
+            if (p.x < -50 || p.x > WINDOW_W + 50 || p.y < -50 || p.y > WINDOW_H + 50) { //erase if out of bounds
                 bullets.erase(bullets.begin() + i);
             } else ++i;
         }
 
-        // Update enemies
-        for (size_t i = 0; i < enemies.size(); ++i) {
+        // Keep updating all enemies
+        for (int i = 0; i < enemies.size(); ++i) {
             enemies[i].shape.move(enemies[i].velocity * dt);
         }
 
         // Collision detection: bullets vs enemies
-        for (size_t bi = 0; bi < bullets.size(); ) {
+        for (int bi = 0; bi < bullets.size(); ) {
             bool bulletRemoved = false;
-            sf::Vector2f bp = bullets[bi].shape.getPosition();
-            for (size_t ei = 0; ei < enemies.size(); ++ei) {
-                sf::Vector2f ep = enemies[ei].shape.getPosition();
-                float dx = bp.x - ep.x;
-                float dy = bp.y - ep.y;
+            sf::Vector2f bp = bullets[bi].shape.getPosition(); // bullet position
+            for (size_t ei = 0; ei < enemies.size(); ++ei) { // check against all enemies
+                sf::Vector2f ep = enemies[ei].shape.getPosition(); // enemy position
+                float dx = bp.x - ep.x; // difference in x
+                float dy = bp.y - ep.y; // difference in y
                 float dist2 = dx*dx + dy*dy;
-                float rsum = bullets[bi].shape.getRadius() + enemies[ei].shape.getRadius();
+                float rsum = bullets[bi].shape.getRadius() + enemies[ei].shape.getRadius(); // if distance squared is less than radius sum squared, we have a collision
                 if (dist2 <= rsum * rsum) {
                     // hit: remove both bullet and enemy (one-shot kill)
                     enemies.erase(enemies.begin() + ei);
@@ -177,12 +177,12 @@ int main() {
             if (!bulletRemoved) ++bi;
         }
 
-        // Check if any enemy reached the center -> remove them (could be lives)
-        for (size_t i = 0; i < enemies.size(); ) {
-            sf::Vector2f ep = enemies[i].shape.getPosition();
+        // Check if any enemy reached the center -> remove them (as if they hit the turret)
+        for (int i = 0; i < enemies.size(); ) {
+            sf::Vector2f ep = enemies[i].shape.getPosition(); // enemy position
             float dx = ep.x - CENTER.x;
             float dy = ep.y - CENTER.y;
-            float dist2 = dx*dx + dy*dy;
+            float dist2 = dx*dx + dy*dy; // distance squared to center
             if (dist2 <= (turretRadius + enemies[i].shape.getRadius()) * (turretRadius + enemies[i].shape.getRadius())) {
                 // enemy reached turret: remove it
                 enemies.erase(enemies.begin() + i);

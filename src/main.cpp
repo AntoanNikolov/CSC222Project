@@ -76,6 +76,7 @@ int main() {
     chargeBar.setFillColor(sf::Color::Cyan);
     chargeBarBackground.setOrigin(sf::Vector2f(-7.5, -436.f));
     chargeBarBackground.setFillColor(sf::Color(100, 100, 100));
+    chargeBar.setRotation(sf::degrees(180.f));
 
     // Shooting
     const float bulletSpeed = 520.f;
@@ -99,7 +100,7 @@ int main() {
     std::vector<Echo> echos;
 
     int wave = 1;
-    int lives = 5;
+    int lives = 9999;
     bool waveActive = false;
     float nextWaveTimer = 0.f;
     const float timeBetweenWaves = 1.0f;

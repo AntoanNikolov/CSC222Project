@@ -41,15 +41,14 @@ struct Echo {
     sf::Vector2f velocity;
 };
 
-
-
 int main() {
     const unsigned int WINDOW_W = 800;
     const unsigned int WINDOW_H = 600;
     const sf::Vector2f CENTER(WINDOW_W / 2.f, WINDOW_H / 2.f);
 
     // VideoMode in SFML 3 accepts a Vector2u
-    sf::RenderWindow window(sf::VideoMode({WINDOW_W, WINDOW_H}), "Turret Waves - SFML");
+    sf::RenderWindow window(sf::VideoMode({WINDOW_W, WINDOW_H}), "EchoClash");
+    window.requestFocus();
     window.setFramerateLimit(60);
 
 
@@ -64,6 +63,11 @@ int main() {
     const float barrelLength = 46.f;
     const float barrelThickness = 12.f;
     const float turretRadius = 18.f;
+
+    // Charge bar
+    const float barHeight = 150.f;
+    const float barWidth = 20.f;
+    float barCharge = 0.f;
 
     // Shooting
     const float bulletSpeed = 520.f;
@@ -191,8 +195,10 @@ int main() {
         if (isWHeld) {
             // Charge the echo
             echoCharge = echoCharge + dt * echoChargeRate, echoMaxCharge;
+            barCharge.setSize(barWidth, echoCharge);
         } else if (wasWHeld && echoCharge > 0.f) {
             // if W was released - spawn the echo with the accumulated charge
+            barCharge.setSize(barWidth, 0);
             Echo ec;
             ec.length = echoCharge;
             total_intensity += ec.length;
@@ -376,6 +382,16 @@ int main() {
         base.setPosition(CENTER);
         base.setFillColor(sf::Color(120, 180, 220));
         window.draw(base);
+
+        // Draw charge bar
+        sf::RectangleShape chargeBarBackground(sf::Vector2f(26, 157));
+        sf::RectangleShape chargeBar(sf::Vector2f(barWidth, 0));
+        chargeBar.setOrigin(sf::Vector2f(-10.f, -440.f));
+        chargeBar.setFillColor(sf::Color::Cyan);
+        chargeBarBackground.setOrigin(sf::Vector2f(-7.5, -436.f));
+        chargeBarBackground.setFillColor(sf::Color(100, 100, 100));
+        window.draw(chargeBarBackground);
+        window.draw(chargeBar);
 
         // Draw barrel (rectangle) rotated by turretAngleDeg
         sf::RectangleShape barrel(sf::Vector2f(barrelLength, barrelThickness));

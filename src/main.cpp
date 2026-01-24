@@ -318,16 +318,6 @@ int main() {
             }
             wasEHeld = isEHeld;
 
-            // Pause menu
-            bool isEscapeHeld = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape);
-            if (isEscapeHeld && !wasEscapeHeld) {
-                    std::cout << "esc pressed!" << std::endl;
-                    isPaused = true; // now we need to leave the "if (!isPaused)" block above to be able to unpause
-                    resumeButton.setFillColor(sf::Color(100, 100, 100, 255));
-                    quitButton.setFillColor(sf::Color(100, 100, 100, 255));
-            }
-            wasEscapeHeld = isEscapeHeld;
-
             // Update echos (shrinking rectangles that fly outward)
             for (size_t i = 0; i < echos.size(); ) {
                 echos[i].elapsedTime += dt;
@@ -508,11 +498,26 @@ int main() {
             }
         }
 
+        // Pause menu toggle (moved this as well for cleanliness)
+        bool isEscapeHeld = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape);
+        if (isEscapeHeld && !wasEscapeHeld) {
+            isPaused = !isPaused; // toggle pause on/off
+            if (isPaused) {
+                resumeButton.setFillColor(sf::Color(100, 100, 100, 255));
+                quitButton.setFillColor(sf::Color(100, 100, 100, 255));
+            } else {
+                resumeButton.setFillColor(sf::Color(100, 100, 100, 0));
+                quitButton.setFillColor(sf::Color(100, 100, 100, 0));
+            }
+        }
+        wasEscapeHeld = isEscapeHeld;
+
         // Pause menu button clicks (outside isPaused check so it works while paused)
         if (isPaused && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)){
             std::cout << "mouse clicked!" << std::endl;
             sf::Vector2f mousePosition = sf::Vector2f(sf::Mouse::getPosition(window));
             if(resumeButton.getGlobalBounds().contains(mousePosition)) {
+                std::cout << "resuming game!" << std::endl;
                 isPaused = false;
                 resumeButton.setFillColor(sf::Color(100, 100, 100, 0));
                 quitButton.setFillColor(sf::Color(100, 100, 100, 0));

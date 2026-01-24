@@ -156,6 +156,8 @@ int main() {
     std::vector<Enemy> enemies;
     std::vector<Echo> echos;
     std::vector<BigEcho> BigEchos;
+    // vector for all echos: 
+    std::vector<std::variant<Echo, BigEcho>> allEchos; // std variant is needed to hold both types, as it dynamically tracks which type is stored
 
     int wave = 1;
     int lives = 10;
@@ -284,6 +286,7 @@ int main() {
                 ec.shape.setRotation(sf::degrees(turretAngleDeg + 90.f)); // perpendicular to turret direction
                 ec.shape.setFillColor(sf::Color::Cyan);
                 echos.push_back(ec);
+                allEchos.push_back(ec);
                 echoCharge = 0.f;  // Reset charge
             }
             wasWHeld = isWHeld;
@@ -314,6 +317,7 @@ int main() {
                 bec.shape.setOutlineThickness(3.f);
                 bec.shape.setOutlineColor(sf::Color::Magenta);
                 BigEchos.push_back(bec);
+                allEchos.push_back(bec);
                 bigWaveCharge = 0.f;  // Reset charge
             }
             wasEHeld = isEHeld;
@@ -373,37 +377,57 @@ int main() {
                 const sf::Vector2f enemyPos = enemies[ei].shape.getPosition();
                 const float enemyR = enemies[ei].shape.getRadius();
                 bool hit = false;
-                for (size_t ec_i = 0; ec_i < echos.size(); ++ec_i) {
-                    const Echo &ec = echos[ec_i];
-                    // If an echo has non-positive length skip
-                    if (ec.length <= 0.f) continue;
+                for (size_t ec_i = 0; ec_i < allEchos.size(); ++ec_i) {
+                    if (std::holds_alternative<Echo>(allEchos[ec_i])) {
+                        const Echo &ec = std::get<Echo>(allEchos[ec_i]);
+                        // If an echo has non-positive length skip
+                        if (ec.length <= 0.f) continue;
 
-                    // Inverse-transform the enemy position into the echo's local coordinates
-                    sf::Transform inv = ec.shape.getTransform().getInverse();
-                    sf::Vector2f local = inv.transformPoint(enemyPos);
+                        // Inverse-transform the enemy position into the echo's local coordinates
+                        sf::Transform inv = ec.shape.getTransform().getInverse();
+                        sf::Vector2f local = inv.transformPoint(enemyPos);
 
-                    // Rectangle is centered at origin in local space, extents are half-length and half-thickness
-                    float halfW = ec.length / 2.f;
-                    float halfH = echoThickness / 2.f;
+                        // Rectangle is centered at origin in local space, extents are half-length and half-thickness
+                        float halfW = ec.length / 2.f;
+                        float halfH = echoThickness / 2.f;
 
-                    // Find closest point on the axis-aligned rectangle to the local point
-                    float closestX = std::max(-halfW, std::min(local.x, halfW));
-                    float closestY = std::max(-halfH, std::min(local.y, halfH));
+                        // Find closest point on the axis-aligned rectangle to the local point
+                        float closestX = std::max(-halfW, std::min(local.x, halfW));
+                        float closestY = std::max(-halfH, std::min(local.y, halfH));
 
-                    float dx = local.x - closestX;
-                    float dy = local.y - closestY;
-                    float dist2 = dx*dx + dy*dy;
+                        float dx = local.x - closestX;
+                        float dy = local.y - closestY;
+                        float dist2 = dx*dx + dy*dy;
 
-                    if (dist2 <= enemyR * enemyR) {
-                        // Hit: mark enemy visible for 4 seconds (don't erase)
-                        enemies[ei].set_visibility(true);
-                        enemies[ei].visibilityTimer = 4.0f; // seconds
-                        hit = true;
-                        std::cout << "collision" << std::endl;
-                        break;
+                        if (dist2 <= enemyR * enemyR) {
+                            enemies[ei].set_visibility(true);
+                            enemies[ei].visibilityTimer = 4.0f;
+                            hit = true;
+                            std::cout << "collision" << std::endl;
+                            break;
+                        }
+                    } else if (std::holds_alternative<BigEcho>(allEchos[ec_i])) {
+                        const BigEcho &bec = std::get<BigEcho>(allEchos[ec_i]);
+                        // If a big echo has non-positive radius skip
+                        if (bec.radius <= 0.f) continue;
+
+                        // Check if enemy is within the big echo circle
+                        sf::Vector2f becPos = bec.shape.getPosition();
+                        float dx = enemyPos.x - becPos.x;
+                        float dy = enemyPos.y - becPos.y;
+                        float dist2 = dx*dx + dy*dy;
+                        float rsum = bec.radius + enemyR;
+
+                        if (dist2 <= rsum * rsum) {
+                            enemies[ei].set_visibility(true);
+                            enemies[ei].visibilityTimer = 4.0f;
+                            hit = true;
+                            std::cout << "collision with big echo" << std::endl;
+                            break;
+                        }
                     }
                 }
-                (void)hit; // unused here but kept for clarity if you add debug/use it
+                (void)hit;
                 }
 
             // Per-frame: update enemy visibility timers

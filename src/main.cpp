@@ -139,6 +139,8 @@ int main() {
     const float bigWaveChargeRate = 250.f; // how fast radius increases per second when E is held
     const float bigWaveShrinkRate = 150.f; // How fast big wave shrinks per second
 
+    bool wasEscapeHeld = false; // track if Escape was held last frame for pause menu
+
     std::vector<Bullet> bullets;
     std::vector<Enemy> enemies;
     std::vector<Echo> echos;
@@ -306,22 +308,24 @@ int main() {
             wasEHeld = isEHeld;
 
             // Pause menu
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape)) {
+            bool isEscapeHeld = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape);
+            if (isEscapeHeld && !wasEscapeHeld) {
                     std::cout << "esc pressed!" << std::endl;
                     isPaused = true;
                     resumeButton.setFillColor(sf::Color(100, 100, 100, 255));
                     quitButton.setFillColor(sf::Color(100, 100, 100, 255));
-                    if (sf::Mouse::isButtonPressed(sf::Mouse::Left)){
-                        sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
-                        if(resumeButton.getGlobalBounds().contains(mousePosition)) {
-                            isPaused = false;
-                            resumeButton.setFillColor(sf::Color(100, 100, 100, 0));
-                            quitButton.setFillColor(sf::Color(100, 100, 100, 0));
-                        } else if (quitButton.getGlobalBounds().contains(mousePosition)) {
-                            return 0;
-                        }
-                    }
             }
+            if (isPaused && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)){
+                sf::Vector2f mousePosition = sf::Vector2f(sf::Mouse::getPosition(window)); // had to convert to avoid error
+                if(resumeButton.getGlobalBounds().contains(mousePosition)) {
+                    isPaused = false;
+                    resumeButton.setFillColor(sf::Color(100, 100, 100, 0));
+                    quitButton.setFillColor(sf::Color(100, 100, 100, 0));
+                } else if (quitButton.getGlobalBounds().contains(mousePosition)) {
+                    return 0;
+                }
+            }
+            wasEscapeHeld = isEscapeHeld; 
 
             // Update echos (shrinking rectangles that fly outward)
             for (size_t i = 0; i < echos.size(); ) {

@@ -72,6 +72,17 @@ int main() {
     uiText.setFillColor(sf::Color::White);
     uiText.setPosition(sf::Vector2f(350.f, 8.f));
 
+    // pause menu text
+    sf::Text pauseText(font, "PAUSED", 40);
+    pauseText.setFillColor(sf::Color::White);
+    pauseText.setPosition(sf::Vector2f(300.f, 150.f));
+    sf::Text resumeText(font, "Resume", 32);
+    resumeText.setFillColor(sf::Color::White);
+    resumeText.setPosition(sf::Vector2f(310.f, 215.f));
+    sf::Text quitText(font, "Quit", 32);
+    quitText.setFillColor(sf::Color::White);
+    quitText.setPosition(sf::Vector2f(310.f, 305.f));
+
     // Random generator
     std::random_device rd;
     std::mt19937 rng(rd());
@@ -311,21 +322,11 @@ int main() {
             bool isEscapeHeld = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape);
             if (isEscapeHeld && !wasEscapeHeld) {
                     std::cout << "esc pressed!" << std::endl;
-                    isPaused = true;
+                    isPaused = true; // now we need to leave the "if (!isPaused)" block above to be able to unpause
                     resumeButton.setFillColor(sf::Color(100, 100, 100, 255));
                     quitButton.setFillColor(sf::Color(100, 100, 100, 255));
             }
-            if (isPaused && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)){
-                sf::Vector2f mousePosition = sf::Vector2f(sf::Mouse::getPosition(window)); // had to convert to avoid error
-                if(resumeButton.getGlobalBounds().contains(mousePosition)) {
-                    isPaused = false;
-                    resumeButton.setFillColor(sf::Color(100, 100, 100, 0));
-                    quitButton.setFillColor(sf::Color(100, 100, 100, 0));
-                } else if (quitButton.getGlobalBounds().contains(mousePosition)) {
-                    return 0;
-                }
-            }
-            wasEscapeHeld = isEscapeHeld; 
+            wasEscapeHeld = isEscapeHeld;
 
             // Update echos (shrinking rectangles that fly outward)
             for (size_t i = 0; i < echos.size(); ) {
@@ -507,6 +508,19 @@ int main() {
             }
         }
 
+        // Pause menu button clicks (outside isPaused check so it works while paused)
+        if (isPaused && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)){
+            std::cout << "mouse clicked!" << std::endl;
+            sf::Vector2f mousePosition = sf::Vector2f(sf::Mouse::getPosition(window));
+            if(resumeButton.getGlobalBounds().contains(mousePosition)) {
+                isPaused = false;
+                resumeButton.setFillColor(sf::Color(100, 100, 100, 0));
+                quitButton.setFillColor(sf::Color(100, 100, 100, 0));
+            } else if (quitButton.getGlobalBounds().contains(mousePosition)) {
+                return 0;
+            }
+        }
+
         // Drawing
         window.clear(sf::Color(30, 30, 30));
 
@@ -580,6 +594,11 @@ int main() {
                              "\nControls: Left/Right to rotate, Space to fire, Esc to pause,"
                             "\n Up to charge echo,");
             window.draw(uiText);
+            if (isPaused) {
+                window.draw(pauseText);
+                window.draw(resumeText);
+                window.draw(quitText);
+            }
         }
 
         window.display();

@@ -43,18 +43,88 @@ void Enemy::set_visibility(bool v) {
     }
 }
 
-struct Echo {
-    sf::RectangleShape shape;
-    float length; // changes
-    float elapsedTime; // time since spawn
+class EchoBase {
+public:
+    float elapsedTime = 0.f;
     sf::Vector2f velocity;
+    
+    //Virtual destructor ensures correct cleanup when deleting Echo or BigEcho through a base pointer
+    virtual ~EchoBase() = default;
+    virtual void update(float dt, float shrinkRate, float speed, float thickness, const sf::Vector2f& center) = 0;
+    virtual bool hitsEnemy(const Enemy& enemy, float thickness) const = 0;
+
 };
 
-struct BigEcho {
+struct Echo : public EchoBase {
+    sf::RectangleShape shape;
+    float length;
+    void update(float dt, float shrinkRate, float speed, float thickness, const sf::Vector2f& center) override {
+        elapsedTime += dt;
+        
+        // Rectangle shrinks at constant rate
+        length = (length - dt * shrinkRate);
+        
+        // Update rectangle size according to the above change
+        shape.setSize(sf::Vector2f(length, thickness));
+        shape.setOrigin(sf::Vector2f(length / 2.f, thickness / 2.f)); // recenter as it shrinks
+        
+        // Move outward from center
+        sf::Vector2f offset = velocity * speed * elapsedTime;
+        // ^ The above line caluclates how far an echo has traveled by multiplying its direction by speed and total time alive
+        shape.setPosition(center + offset);
+    }
+
+    bool hitsEnemy(const Enemy& enemy, float thickness) const override {
+    if (length <= 0.f) return false;
+
+    sf::Vector2f enemyPos = enemy.shape.getPosition();
+    float enemyR = enemy.shape.getRadius();
+
+    sf::Transform inv = shape.getTransform().getInverse();
+    sf::Vector2f local = inv.transformPoint(enemyPos);
+
+    float halfW = length / 2.f;
+    float halfH = thickness / 2.f;
+
+    float cx = std::max(-halfW, std::min(local.x, halfW));
+    float cy = std::max(-halfH, std::min(local.y, halfH));
+
+    float dx = local.x - cx;
+    float dy = local.y - cy;
+
+    return (dx*dx + dy*dy) <= enemyR * enemyR;
+    }
+
+};
+
+struct BigEcho : public EchoBase {
     sf::CircleShape shape;
-    float radius; // changes
-    float elapsedTime; // time since spawn
-    sf::Vector2f velocity;
+    float radius;
+    void update(float dt, float shrinkRate, float speed, float thickness, const sf::Vector2f& center) override {
+        elapsedTime += dt;
+        
+        // Circle shrinks at constant rate
+        radius = (radius - dt * shrinkRate);
+        
+        // Update circle size according to the above change
+        shape.setRadius(radius);
+        shape.setOrigin(sf::Vector2f(radius, radius)); // recenter as it shrinks
+        shape.setPosition(center);
+    }
+    bool hitsEnemy(const Enemy& enemy, float) const override {
+    if (radius <= 0.f) return false;
+
+    sf::Vector2f ep = enemy.shape.getPosition();
+    sf::Vector2f cp = shape.getPosition();
+    float er = enemy.shape.getRadius();
+
+    float dx = ep.x - cp.x;
+    float dy = ep.y - cp.y;
+    float r = radius + er;
+
+    return (dx*dx + dy*dy) <= r * r;
+}
+
 };
 
 int main() {
@@ -166,7 +236,9 @@ int main() {
     std::vector<Echo> echos;
     std::vector<BigEcho> BigEchos;
     // vector for all echos: 
-    std::vector<std::variant<Echo, BigEcho>> allEchos; // std variant is needed to hold both types, as it dynamically tracks which type is stored
+    // std::vector<std::variant<Echo, BigEcho>> allEchos; // std variant is needed to hold both types, as it dynamically tracks which type is stored
+    std::vector<std::unique_ptr<EchoBase>> allEchos; //polymorphic approach
+
 
     int wave = 1;
     int lives = 10;
@@ -190,11 +262,17 @@ int main() {
     // Helper to spawn a wave (spawn count increases each wave)
     float total_intensity = 0.f;
     auto spawnWave = [&](int waveNumber) {
-    int count = 1 + total_intensity/6; // might not be dividing by the right number *****
+    int count = 1 + total_intensity/40; // might not be dividing by the right number *****
+    if (count > 5) count = 5; // cap max enemies to 5 for now, to make the game easier
 
         
         // int count = 1 + waveNumber * 2;
         enemies.clear();
+        // Reset echos when a new wave spawns, rather than when their radius/length reaches zero
+        // Which is a dumb solution but it works
+        echos.clear();
+        BigEchos.clear();
+        allEchos.clear();
         enemies.reserve(count); // we reserve enough to store more enemies and avoid reallocations
         float spawnRadius = std::max(WINDOW_W, WINDOW_H) / 2.f + 50.f;
         for (int i = 0; i < count; ++i) {
@@ -284,7 +362,7 @@ int main() {
                 chargeBar.setSize(sf::Vector2f(barWidth, 0.f));
                 Echo ec;
                 ec.length = echoCharge * 2.f;
-                total_intensity += ec.length;
+                total_intensity += ec.length/2;
                 ec.elapsedTime = 0.f; // just spawned
                 float rad = turretAngleDeg * 3.14159265f / 180.f; // line must be perpendicular to turret direction
                 ec.velocity = sf::Vector2f(std::cos(rad), std::sin(rad));
@@ -295,7 +373,7 @@ int main() {
                 ec.shape.setRotation(sf::degrees(turretAngleDeg + 90.f)); // perpendicular to turret direction
                 ec.shape.setFillColor(sf::Color::Cyan);
                 echos.push_back(ec);
-                allEchos.push_back(ec);
+                allEchos.push_back(std::make_unique<Echo>(ec));
                 echoCharge = 0.f;  // Reset charge
             }
             wasWHeld = isWHeld;
@@ -316,7 +394,7 @@ int main() {
                 bigWaveChargeBar.setSize(sf::Vector2f(barWidth, 0.f));
                 BigEcho bec;
                 bec.radius = bigWaveCharge * 2.f;
-                total_intensity += bec.radius * 2; // big wave intensity is much higher
+                total_intensity += bec.radius; // big wave intensity is much higher
                 bec.elapsedTime = 0.f; // just spawned
                 // Create circle that expands from center
                 bec.shape = sf::CircleShape(bec.radius);
@@ -326,26 +404,14 @@ int main() {
                 bec.shape.setOutlineThickness(3.f);
                 bec.shape.setOutlineColor(sf::Color::Magenta);
                 BigEchos.push_back(bec);
-                allEchos.push_back(bec);
+                allEchos.push_back(std::make_unique<BigEcho>(bec));
                 bigWaveCharge = 0.f;  // Reset charge
             }
             wasEHeld = isEHeld;
 
             // Update echos (shrinking rectangles that fly outward)
             for (size_t i = 0; i < echos.size(); ) {
-                echos[i].elapsedTime += dt;
-                
-                // Rectangle shrinks at constant rate
-                echos[i].length = (echos[i].length - dt * echoShrinkRate);
-                
-                // Update rectangle size according to the above change
-                echos[i].shape.setSize(sf::Vector2f(echos[i].length, echoThickness));
-                echos[i].shape.setOrigin(sf::Vector2f(echos[i].length / 2.f, echoThickness / 2.f)); // recenter as it shrinks
-                
-                // Move outward from center
-                sf::Vector2f offset = echos[i].velocity * echoSpeed * echos[i].elapsedTime;
-                // ^ The above line caluclates how far an echo has traveled by multiplying its direction by speed and total time alive
-                echos[i].shape.setPosition(CENTER + offset);
+                echos[i].update(dt, echoShrinkRate, echoSpeed, echoThickness, CENTER);
                 // Remove when length is 0
                 if (echos[i].length <= 0.f) {
                     echos.erase(echos.begin() + i);
@@ -356,16 +422,7 @@ int main() {
 
             // Update big waves (expanding circles)
             for (size_t i = 0; i < BigEchos.size(); ) {
-                BigEchos[i].elapsedTime += dt;
-                
-                // Circle shrinks at constant rate
-                BigEchos[i].radius = (BigEchos[i].radius - dt * bigWaveShrinkRate);
-                
-                // Update circle size according to the above change
-                BigEchos[i].shape.setRadius(BigEchos[i].radius);
-                BigEchos[i].shape.setOrigin(sf::Vector2f(BigEchos[i].radius, BigEchos[i].radius)); // recenter as it shrinks
-                BigEchos[i].shape.setPosition(CENTER);
-                
+                BigEchos[i].update(dt, bigWaveShrinkRate, 0.f, 0.f, CENTER);
                 // Remove when radius is 0
                 if (BigEchos[i].radius <= 0.f) {
                     BigEchos.erase(BigEchos.begin() + i);
@@ -382,62 +439,16 @@ int main() {
             // Transform the enemy center into the echo's local space (where the rectangle is axis-aligned and centered),
             // clamp to the rectangle extents to find the closest point, then test circle-vs-point distance.
             // On hit: set enemy visible and start a 4.0s timer (do NOT erase the enemy).
-            for (size_t ei = 0; ei < enemies.size(); ++ei) {
-                const sf::Vector2f enemyPos = enemies[ei].shape.getPosition();
-                const float enemyR = enemies[ei].shape.getRadius();
-                bool hit = false;
-                for (size_t ec_i = 0; ec_i < allEchos.size(); ++ec_i) {
-                    if (std::holds_alternative<Echo>(allEchos[ec_i])) {
-                        const Echo &ec = std::get<Echo>(allEchos[ec_i]);
-                        // If an echo has non-positive length skip
-                        if (ec.length <= 0.f) continue;
-
-                        // Inverse-transform the enemy position into the echo's local coordinates
-                        sf::Transform inv = ec.shape.getTransform().getInverse();
-                        sf::Vector2f local = inv.transformPoint(enemyPos);
-
-                        // Rectangle is centered at origin in local space, extents are half-length and half-thickness
-                        float halfW = ec.length / 2.f;
-                        float halfH = echoThickness / 2.f;
-
-                        // Find closest point on the axis-aligned rectangle to the local point
-                        float closestX = std::max(-halfW, std::min(local.x, halfW));
-                        float closestY = std::max(-halfH, std::min(local.y, halfH));
-
-                        float dx = local.x - closestX;
-                        float dy = local.y - closestY;
-                        float dist2 = dx*dx + dy*dy;
-
-                        if (dist2 <= enemyR * enemyR) {
-                            enemies[ei].set_visibility(true);
-                            enemies[ei].visibilityTimer = 4.0f;
-                            hit = true;
-                            std::cout << "collision" << std::endl;
-                            break;
-                        }
-                    } else if (std::holds_alternative<BigEcho>(allEchos[ec_i])) {
-                        const BigEcho &bec = std::get<BigEcho>(allEchos[ec_i]);
-                        // If a big echo has non-positive radius skip
-                        if (bec.radius <= 0.f) continue;
-
-                        // Check if enemy is within the big echo circle
-                        sf::Vector2f becPos = bec.shape.getPosition();
-                        float dx = enemyPos.x - becPos.x;
-                        float dy = enemyPos.y - becPos.y;
-                        float dist2 = dx*dx + dy*dy;
-                        float rsum = bec.radius + enemyR;
-
-                        if (dist2 <= rsum * rsum) {
-                            enemies[ei].set_visibility(true);
-                            enemies[ei].visibilityTimer = 4.0f;
-                            hit = true;
-                            std::cout << "collision with big echo" << std::endl;
-                            break;
-                        }
+            for (auto& enemy : enemies) {
+                for (auto& echo : allEchos) {
+                    if (echo->hitsEnemy(enemy, echoThickness)) {
+                        enemy.set_visibility(true);
+                        enemy.visibilityTimer = 4.f;
+                        break;
                     }
                 }
-                (void)hit;
-                }
+            }
+
 
             // Per-frame: update enemy visibility timers
             for (size_t i = 0; i < enemies.size(); ++i) {
@@ -643,5 +654,3 @@ int main() {
     }
     return 0;
 }
-
-// TODO: Create explosion ability when a certain amount of enemies have been killed
